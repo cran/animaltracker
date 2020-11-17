@@ -4,19 +4,27 @@
 \alias{join_summaries}
 \title{Joins two animal data frame summaries by a column and appends differences}
 \usage{
-join_summaries(correct_summary, candidate_summary, by_str, daily = FALSE)
+join_summaries(
+  correct_summary,
+  candidate_summary,
+  by_str,
+  daily = FALSE,
+  use_elev = TRUE
+)
 }
 \arguments{
-\item{correct_summary}{summary df of reference dataset, returned by summarise_anidf}
+\item{correct_summary}{summary data frame of reference dataset, returned by summarise_anidf}
 
-\item{candidate_summary}{summary df of dataset to be compared to reference, returned by summarise_anidf}
+\item{candidate_summary}{summary data frame of dataset to be compared to reference, returned by summarise_anidf}
 
 \item{by_str}{column to join by as a string, null if daily=TRUE}
 
 \item{daily}{whether to group by both GPS and Date for daily summary, defaults to False}
+
+\item{use_elev}{logical, whether to include elevation in summary, defaults to true}
 }
 \value{
-df of joined summaries with differences
+data frame of joined summaries with differences
 }
 \description{
 Joins two animal data frame summaries by a column and appends differences

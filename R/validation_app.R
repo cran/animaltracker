@@ -2,15 +2,17 @@ if(getRversion() >= '2.5.1') {
   globalVariables(c('demo_comparison', 'RateSignal', 'cumDistSignal', 'Dropped.x',
                     'Dropped.y', 'VAR', 'Source', 'Signal', 'Flag', 'Rate.y',
                     'Course.y', 'Distance.y', 'cumDist.x', 'cumDistLower',
-                    'cumDistUpper', 'RateLower', 'RateUpper'))
+                    'cumDistUpper', 'RateLower', 'RateUpper', 'DistanceFlag'))
 }
 #'
-#'Run the 'shiny' validation app.
-#'Depending on the size of input files, it may be advisable to increase the maximum request size.
+#'Run the 'shiny' validation app
 #'
 #'@export
 #'@return None
 run_validation_app <- function() {
+  options(shiny.maxRequestSize=100*1024^2)
+  
+  
   ui <- fluidPage(theme = shinythemes::shinytheme("yeti"),
     titlePanel("Animal Data Validation"),
     sidebarLayout(

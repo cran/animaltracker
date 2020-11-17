@@ -8,15 +8,18 @@ GPS, date, lat, long, course, distance, rate, elevation column names should matc
 compare_summarise_data(
   correct,
   candidate,
+  use_elev = TRUE,
   export = FALSE,
   gps_out = NULL,
   date_out = NULL
 )
 }
 \arguments{
-\item{correct}{reference df}
+\item{correct}{reference data frame}
 
-\item{candidate}{df to be compared to the reference}
+\item{candidate}{data frame to be compared to the reference}
+
+\item{use_elev}{logical, whether to include elevation in summary, defaults to True}
 
 \item{export}{logical, whether to export summaries to .csv, defaults to False}
 
@@ -25,7 +28,7 @@ compare_summarise_data(
 \item{date_out}{desired file name of .csv output summary by date when export is True}
 }
 \value{
-list containing gps_out and date_out as dfs
+list containing gps_out and date_out as data frames
 }
 \description{
 Compares two animal data frames and calculates summary statistics. 

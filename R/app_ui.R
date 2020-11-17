@@ -1,3 +1,5 @@
+### UI the Shiny App
+
 #'
 #'Defines a user interface for the 'shiny' app
 #'
@@ -18,14 +20,14 @@ app_ui <- function(){
   }'
     navbarPage(theme = shinythemes::shinytheme("yeti"),
              header = div(shinyjs::useShinyjs(),
-                          shinyjs::extendShinyjs(text = jsCode)),
+                          shinyjs::extendShinyjs(text = jsCode, functions = "removePolygon")),
              title = "Animal Tracker",
              
              ## DATA PANEL
              tabPanel("Data", 
                       sidebarLayout(
                         sidebarPanel( 
-                          h4("Upload Data"),
+                          h4("1. Upload Data"),
                           helpText("Select a zip folder on your computer containing .csv files. Please upload data from one
                                    area at a time."),
 
@@ -33,31 +35,34 @@ app_ui <- function(){
                           textOutput("numUploaded"),
                           hr(),
                           
-                          h4("Data Processing"),
-                          shinyBS::bsCollapse(id = "uploadOptions",
+                          h4("2. Select Data"),
+                          reactivePickerOutput("choose_site") %>% shinycssloaders::withSpinner(),
+                          reactivePickerOutput("choose_ani"),
+                          datePickerOutput("choose_dates"),
+                          timeOutput("min_time"),
+                          timeOutput("max_time"),
+                          
+                          hr(),
+                          
+                          h4("3. Data Processing"),
+                          shinyBS::bsCollapse(id = "uploadOptions", open = "Elevation Options",
                                      shinyBS::bsCollapsePanel("Cleaning Options",
                                                      checkboxInput("filterBox", label = "Filter bad data points", value = TRUE)
                                      ),
                                      shinyBS::bsCollapsePanel("Elevation Options",
-                                                     uiOutput("lat_bounds"),
-                                                     uiOutput("long_bounds"),
+                                                     reactiveRangeOutput("lat_bounds"),
+                                                     reactiveRangeOutput("long_bounds"),
                                                      uiOutput("zoom"),
                                                      checkboxInput("slopeBox", label = "Include slope", value = TRUE),
                                                      checkboxInput("aspectBox", label = "Include aspect", value = TRUE)
                                      )
                           ),
-                          actionButton("processButton", "Process Data"),
+                          actionButton("processButton", "Process All"),
+                          actionButton("processSelectedButton", "Process Selected"),
                           
                           hr(),
                           
-                          h4("Select Data"),
-                          uiOutput("choose_site") %>% shinycssloaders::withSpinner(),
-                          uiOutput("choose_ani"),
-                          uiOutput("choose_dates"),
-                          
-                          hr(),
-                          
-                          h4("Download Data"),
+                          h4("4. Download Data"),
                           helpText("Save data to a (potentially large) .csv file."),
                           # Button
                           shinyBS::bsCollapse(id = "downloadOptionsPanel",
@@ -73,9 +78,13 @@ app_ui <- function(){
                           
                           leafletOutput("mainmap", height = 640) %>% shinycssloaders::withSpinner(),
                           htmlOutput("mapinfo"),
+                          h4("Display Fencing"),
+                          fileInput("kmzInput", "Upload kmz file", accept=c(".kmz")),
                           h4("Recent Data"),
-                          uiOutput("choose_recent")
-                          
+                          reactivePickerOutput("choose_recent"),
+                          textOutput("nrow_recent"),
+                          br(),
+                          tableOutput("head_recent")
                           
                         ) #mainPanel
                       ) #sidebarLayout
@@ -83,10 +92,10 @@ app_ui <- function(){
              
              ## PLOTS PANEL
              tabPanel("Plots",
-                      plotOutput("plot_elevation_line"),
-                      plotOutput("plot_samplerate_hist"),
-                      plotOutput("plot_rate_violin"),
-                      plotOutput("plot_time_heatmap", height = 1200)
+                      reactivePlotOutput("plot_elevation_line"),
+                      reactivePlotOutput("plot_samplerate_hist"),
+                      reactivePlotOutput("plot_rate_violin"),
+                      reactivePlotOutput("plot_time_heatmap")
                         
                          
              ),# end plots panel
@@ -96,35 +105,35 @@ app_ui <- function(){
                         
                         sidebarPanel(
                           h4("Variables"),
-                          uiOutput("choose_cols"),
+                          staticPickerOutput("choose_cols"),
                           hr(),
                           
                           h4("Summary Statistics"),
-                          uiOutput("choose_stats")
+                          staticPickerOutput("choose_stats")
                         ),
                         
                         mainPanel(
                           h2("Statistical Summary of Selected Data"),
                           helpText("To change the sample, switch to the Data panel."),
                          
-                          uiOutput("elevation_title"),
-                          uiOutput("elevation"),
-                          uiOutput("speed_title"),
-                          uiOutput("speed"),
-                          uiOutput("timediff_title"),
-                          uiOutput("timediff"),
-                          uiOutput("course_title"),
-                          uiOutput("course"),
-                          uiOutput("coursediff_title"),
-                          uiOutput("coursediff"),
-                          uiOutput("distance_title"),
-                          uiOutput("distance"),
-                          uiOutput("rate_title"),
-                          uiOutput("rate"),
-                          uiOutput("slope_title"),
-                          uiOutput("slope"),
-                          uiOutput("aspect_title"),
-                          uiOutput("aspect")
+                          statsLabelOutput("elevation_title"),
+                          statsOutput("elevation"),
+                          statsLabelOutput("speed_title"),
+                          statsOutput("speed"),
+                          statsLabelOutput("timediff_title"),
+                          statsOutput("timediff"),
+                          statsLabelOutput("course_title"),
+                          statsOutput("course"),
+                          statsLabelOutput("coursediff_title"),
+                          statsOutput("coursediff"),
+                          statsLabelOutput("distance_title"),
+                          statsOutput("distance"),
+                          statsLabelOutput("rate_title"),
+                          statsOutput("rate"),
+                          statsLabelOutput("slope_title"),
+                          statsOutput("slope"),
+                          statsLabelOutput("aspect_title"),
+                          statsOutput("aspect")
                         )
                       )
                       

@@ -1,7 +1,5 @@
 #'
-#'Run the animaltracker 'shiny' app by calling this function.
-#'Depending on the size of input files, it may be advisable to increase the maximum request size.
-#'
+#'You can run the animaltracker 'shiny' app by calling this function.
 #'@param browser logical, whether to launch the app in your default browser (defaults to TRUE)
 #'@param showcase logical, whether to launch the app in 'showcase' mode (defaults to FALSE)
 #'@return None
@@ -18,8 +16,9 @@ run_shiny_animaltracker <- function( browser = TRUE, showcase=FALSE) {
   requireNamespace("sp")
   requireNamespace("raster")
   requireNamespace("shinyjs")
-  requireNamespace("V8")
   requireNamespace("shinyBS")
+  
+  options(shiny.maxRequestSize=30*1024^2) 
  
   # Run the application (see associated functions, defined separately)
   if(browser | showcase){

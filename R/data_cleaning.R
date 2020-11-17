@@ -2,12 +2,13 @@
 if(getRversion() >= '2.5.1') {
   globalVariables(c('dplyr', 'tibble', 'forecast',
                     'Time', 'Altitude', 'Distance', 'TimeDiff', 'Course',
-                    'CourseDiff', 'DistGeo', 'RateFlag', 'CourseFlag', 'DistanceFlag',
+                    'CourseDiff', 'DistGeo', 'RateFlag', 'CourseFlag', 'DistFlag',
                     'TotalFlags', 'TimeFlag', 'DuplicateDateFlag', 'RMCRecord',
                     'ChecksumRMC', 'GGARecord', 'AltitudeM', 'HeightM', 'DGPSUpdate',
                     'ChecksumGGA', 'DateTimeChar', 'nSatellites', 'GroundSpeed',
                     'TrackAngle', 'hDilution', 'Height', 'Status', 'LatitudeFix',
-                    'LongitudeFix', 'MagVar', 'Satelite'))
+                    'LongitudeFix', 'MagVar', 'Satelite', 'MegaRateFlag',  'Keep',
+                    '.', 'DistFlag'))
 }
 
 #'
@@ -41,6 +42,7 @@ get_file_meta <- function(data_dir){
 #'
 #'@param df data frame in standardized format (e.g., from a raw spreadsheet)
 #'@param dtype data type, iGotU or Columbus P-1
+#'@param prep reformat columns if all required columns are not present, defaults to True
 #'@param filters filter bad data points, defaults to true
 #'@param aniid identification code for the animal
 #'@param gpsid identification code for the GPS device
@@ -50,7 +52,7 @@ get_file_meta <- function(data_dir){
 #'@param maxtime maximum time (minutes) between consecutive points 
 #'@param tz_in input time zone, defaults to UTC
 #'@param tz_out output time zone, defaults to UTC
-#'@return df of clean animal GPS data
+#'@return data frame of clean animal GPS data
 #'@examples
 #'# Clean a data frame from csv
 #'
@@ -77,81 +79,107 @@ get_file_meta <- function(data_dir){
 #'gpsid = 101, maxrate = 84, maxdist = 840, maxtime = 100)
 #'@export
 #'
-clean_location_data <- function(df, dtype, filters = TRUE, 
+clean_location_data <- function(df, dtype, 
+                                prep = TRUE, filters = TRUE, 
                                 aniid = NA, gpsid = NA, 
-                                maxrate = 84, maxcourse = 100, maxdist = 840, maxtime=100, tz_in = "UTC", tz_out = "UTC"){
-  if(dtype == "columbus") {
-    df <- df %>%
-      # exclude unneeded information
-      dplyr::select(-c( RMCRecord, ChecksumRMC, GGARecord, AltitudeM, HeightM, DGPSUpdate, ChecksumGGA) ) %>%
-      dplyr::mutate( 
-        DateTime = lubridate::with_tz(as.POSIXct(DateTimeChar, format = "%d%m%y %H%M%OS", tz = tz_in), tz = tz_out),
-        Date = NA,
-        Time = strftime(DateTime, format="%H:%M:%OS", tz=tz_out),
-        Course = calc_bearing(dplyr::lag(Latitude, 1, default = first(Latitude)), dplyr::lag(Longitude, 1, default = first(Longitude)), Latitude, Longitude),
-        Distance = geosphere::distGeo(cbind(Longitude, Latitude), 
-                                      cbind(dplyr::lag(Longitude,1,default=first(Longitude)), dplyr::lag(Latitude,1,default=first(Latitude) )))
-      ) %>%
-      dplyr::select(
-        Date, Time, DateTime, Latitude, Longitude, Altitude, nSatellites, GroundSpeed, 
-        TrackAngle, hDilution, Height, Status, LatitudeFix, LongitudeFix, MagVar, Course, Distance
-      ) 
-  }
-  if(dtype == "igotu") {
+                                maxrate = 84, maxcourse = 100, maxdist = 840, maxtime=60*60, tz_in = "UTC", tz_out = "UTC"){
+  if(prep) {
+    # make sure quantitative columns are read in properly
     df <- df %>% 
-      tibble::add_column(Order = df$Index, .before="Index")%>%  # add Order column
-      tibble::add_column(Rate = NA, .after="Distance") %>%
-      tibble::add_column(CourseDiff = NA, .after="Course") %>%
+      dplyr::mutate(Latitude = as.numeric(Latitude),
+                    Longitude = as.numeric(Longitude))
+    if(dtype == "columbus" & ("RMCRecord" %in% colnames(df))) {
+      df <- df %>%
+        # exclude unneeded information
+        dplyr::select(-c( RMCRecord, ChecksumRMC, GGARecord, AltitudeM, HeightM, DGPSUpdate, ChecksumGGA) ) %>%
+        dplyr::mutate( 
+          DateTime = lubridate::with_tz(as.POSIXct(DateTimeChar, format = "%d%m%y %H%M%OS", tz = tz_in), tz = tz_out),
+          Date = NA,
+          Time = strftime(DateTime, format="%H:%M:%OS", tz=tz_out),
+          Course = calc_bearing(dplyr::lag(Latitude, 1, default = first(Latitude)), dplyr::lag(Longitude, 1, default = first(Longitude)), Latitude, Longitude),
+          Distance = geosphere::distGeo(cbind(Longitude, Latitude), 
+                                        cbind(dplyr::lag(Longitude,1,default=first(Longitude)), dplyr::lag(Latitude,1,default=first(Latitude) )))
+        ) %>%
+        dplyr::select(
+          Date, Time, DateTime, Latitude, Longitude, Altitude, nSatellites, GroundSpeed, 
+          TrackAngle, hDilution, Height, Status, LatitudeFix, LongitudeFix, MagVar, Course, Distance
+        ) 
+    }
+    if(dtype == "igotu") {
+      # avoid re-creating columns if a dataset is cleaned multiple times
+      if(!("Order" %in% colnames(df))) {
+        df <- df %>% tibble::add_column(Order = df$Index, .before = "Index")
+      }
+      if(!("Rate" %in% colnames(df))) {
+        df <- df %>% tibble::add_column(Rate = NA, .after = "Distance")
+      }
+      if(!("CourseDiff" %in% colnames(df))) {
+        df <- df %>% tibble::add_column(CourseDiff = NA, .after = "Course")
+      }
+      df <- df %>%
+        dplyr::mutate(
+          nSatellites = nchar(as.character(Satelite)) - nchar(gsub("X", "", as.character(Satelite))),
+          DateTime = lubridate::with_tz(lubridate::ymd_hms(paste(Date, Time), tz=tz_in, quiet = TRUE), tz=tz_out),
+          Time = strftime(DateTime, format="%H:%M:%S", tz=tz_out), # reclassify Date as a Date variable
+          Distance = as.numeric(Distance),
+          Course = as.numeric(Course)
+        )
+    }
+    
+    if(!("TimeDiff" %in% colnames(df))) {
+      df <- df %>% tibble::add_column(TimeDiff = NA, .after = "DateTime")
+    }
+    if(!("TimeDiffMins" %in% colnames(df))) {
+      df <- df %>% tibble::add_column(TimeDiffMins = NA, .after = "TimeDiff")
+    }
+    
+    df <- df %>% 
       dplyr::mutate(
-        nSatellites = nchar(as.character(Satelite)) - nchar(gsub("X", "", as.character(Satelite))),
-        DateTime = lubridate::with_tz(lubridate::ymd_hms(paste(Date, Time), tz=tz_in, quiet = TRUE), tz=tz_out),
-        Time = strftime(DateTime, format="%H:%M:%S", tz=tz_out) # reclassify Date as a Date variable
-      )
+        GPS = gpsid,
+        Animal = aniid,
+        Animal = as.factor(Animal),
+        Date = strftime(DateTime, format="%Y-%m-%d", tz=tz_out)# reclassify Date as a Date variable
+      ) %>% 
+      filter(!is.na(Date))
   }
-  
-  df <- df %>% 
-    tibble::add_column(TimeDiff = NA, .after="DateTime") %>% 
-    tibble::add_column(TimeDiffMins = NA, .after="TimeDiff") %>% 
-    dplyr::mutate(
-      GPS = gpsid,
-      Animal = aniid,
-      Animal = as.factor(Animal),
-      Date = strftime(DateTime, format="%Y-%m-%d", tz=tz_out)# reclassify Date as a Date variable
-    )
-  
   if(filters) {
+    
     df <- df %>% 
       dplyr::filter(!is.na(DateTime), !is.na(Date), !is.na(Time), nSatellites > 0) %>% 
       dplyr::distinct(DateTime, .keep_all = TRUE) # remove duplicate timestamps
   }
-  
-  df <- df %>% 
-    dplyr::mutate(
-      TimeDiff = ifelse((is.na(dplyr::lag(DateTime,1)) | as.numeric(difftime(DateTime, dplyr::lag(DateTime,1), units="mins")) > maxtime), 0, as.numeric(DateTime - dplyr::lag(DateTime,1))), # compute sequential time differences (in seconds)
-      TimeDiffMins = ifelse(TimeDiff == 0, 0, as.numeric(difftime(DateTime, dplyr::lag(DateTime,1), units="mins"))),
-      Rate = ifelse(TimeDiffMins != 0, Distance/TimeDiffMins, 0), # compute rate of travel (meters/min), default to 0 to prevent divide by 0 error
-      CourseDiff = abs(Course - dplyr::lag(Course,1,default=first(Course))),
-      DistGeo = geosphere::distGeo(cbind(Longitude, Latitude), 
+
+  ## special function for processing gps data with igotu (protocol from Colt Knight)
+  process_gps_igotu <- function(df_igotu){
+    df_igotu %>%
+      dplyr::mutate(
+        TimeDiff = ifelse((is.na(dplyr::lag(DateTime,1)) | as.numeric(difftime(DateTime, dplyr::lag(DateTime,1), units="secs")) > maxtime), 0, as.numeric(DateTime - dplyr::lag(DateTime,1))), # compute sequential time differences (in seconds)
+        TimeDiffMins = ifelse(TimeDiff == 0, 0, as.numeric(difftime(DateTime, dplyr::lag(DateTime,1), units="mins"))),
+        DistGeo = geosphere::distGeo(cbind(Longitude, Latitude), 
                                      cbind(dplyr::lag(Longitude,1,default=first(Longitude)), dplyr::lag(Latitude,1,default=first(Latitude) ))), #compute geodesic distance between points
-      RateFlag = 1*(Rate > maxrate), # flag any data points representing too fast travel
-      CourseFlag = 1*(CourseDiff >= maxcourse),
-      DistanceFlag = 1*(DistGeo >= maxdist)# compute sequential time differences (in mins)
+        DistGeo = ifelse(DistGeo > 10^6, 0, DistGeo), 
+        Rate = DistGeo/TimeDiffMins, # compute rate of travel (meters/min)
+        CourseDiff = abs(Course - dplyr::lag(Course,1,default=first(Course))),
+        ### implement filtering rules
+        TimeFlag =1*(TimeDiff == 0),
+        RateFlag = 1*(Rate >= maxrate | is.na(Rate)), # flag any data points representing too fast travel
+        MegaRateFlag = 1*(Rate >= 10*maxrate | is.na(Rate)), # flag any data with severe rates
+        CourseFlag = 1*(CourseDiff >= maxcourse), # flag any data with large change in course
+        DistFlag = 1*(DistGeo >= maxdist | ( (TimeDiffMins!=0) & DistGeo/TimeDiffMins > maxrate) ), # flag any large change in distance
+        TotalFlags = RateFlag + CourseFlag + DistFlag,
+        Keep = 1*(TotalFlags < 2 & !DistFlag & !MegaRateFlag & !TimeFlag) # implement key filtering rule
     ) 
+  }
+  
+  df <- process_gps_igotu(df)
+   
   
     if(filters) {
       df <- df %>%
-        dplyr::mutate(TotalFlags = RateFlag + CourseFlag + DistanceFlag ) %>%
-        dplyr::filter(TotalFlags < 2,
-                      !DistanceFlag ) %>%
-        dplyr::mutate( # recalculate columns affected by filtering
-          TimeDiff = ifelse((is.na(dplyr::lag(DateTime,1)) | as.numeric(difftime(DateTime, dplyr::lag(DateTime,1), units="mins")) > maxtime), 0, as.numeric(DateTime - dplyr::lag(DateTime,1))), 
-          TimeDiffMins = ifelse(TimeDiff == 0, 0, as.numeric(difftime(DateTime, dplyr::lag(DateTime,1), units="mins"))),
-          Rate = ifelse(TimeDiffMins != 0, Distance/TimeDiffMins, 0),
-          CourseDiff = abs(Course - dplyr::lag(Course,1,default=first(Course))),
-          DistGeo = geosphere::distGeo(cbind(Longitude, Latitude),
-                                       cbind(dplyr::lag(Longitude,1,default=first(Longitude)), dplyr::lag(Latitude,1,default=first(Latitude))))
-        ) %>%
-        dplyr::select(-c("RateFlag", "CourseFlag", "DistanceFlag", "TotalFlags")) # remove flags after use
+        dplyr::filter( as.logical(Keep) ) %>%
+        process_gps_igotu(.) %>%
+        dplyr::filter( as.logical(Keep) ) %>%
+        dplyr::select(-contains("Flag"), -Keep) # remove flags after use
       
       if(dtype == "columbus") {
         df <- df %>% 
@@ -164,11 +192,11 @@ clean_location_data <- function(df, dtype, filters = TRUE,
           TimeFlag = 1*(is.na(DateTime) | is.na(Date) | is.na(Time))
         ) %>%
         tibble::add_column(DuplicateDateFlag = 1*duplicated(df$DateTime)) %>%
-        dplyr::mutate(TotalFlags = RateFlag + CourseFlag + DistanceFlag + TimeFlag + DuplicateDateFlag)
+        dplyr::mutate(TotalFlags = RateFlag + CourseFlag + DistFlag + TimeFlag + DuplicateDateFlag)
     }
-    
   return(as.data.frame(df))
 }
+
 
 
 #'
@@ -211,7 +239,7 @@ clean_export_files <- function(data_dir, tz_in = "UTC", tz_out = "UTC", export =
     dtype <- current_file$dtype
     
     ## remove any extra copies of the header row
-  
+    
     df$Latitude <- as.numeric(df$Latitude)
     df<- df[!is.na(df$Latitude),]
     
@@ -237,7 +265,7 @@ clean_export_files <- function(data_dir, tz_in = "UTC", tz_out = "UTC", export =
                              aniid = aniid, 
                              gpsid = gpsid, 
                              maxrate = 84, maxcourse = 100, maxdist = 840, maxtime = 100, tz_in = tz_in, tz_out = tz_out)
-   
+    
     message(paste("...", nstart - nrow(df), "points removed"))
     message(paste("...total distance traveled =", round(sum(df$DistGeo)/1000, 1), "km"))
     message(paste("...saving", nrow(df), "good data points"))
@@ -250,8 +278,8 @@ clean_export_files <- function(data_dir, tz_in = "UTC", tz_out = "UTC", export =
                                         data=df)
       
       suppressWarnings(rgdal::writeOGR(obj=output,dsn=cleaned_dir,layer= paste0("layer_", i,"_", substr(aniid, 1, nchar(aniid)-4)),
-                      
-                      driver="ESRI Shapefile"))
+                                       
+                                       driver="ESRI Shapefile"))
     }
     
     

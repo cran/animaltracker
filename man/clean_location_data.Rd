@@ -7,13 +7,14 @@
 clean_location_data(
   df,
   dtype,
+  prep = TRUE,
   filters = TRUE,
   aniid = NA,
   gpsid = NA,
   maxrate = 84,
   maxcourse = 100,
   maxdist = 840,
-  maxtime = 100,
+  maxtime = 60 * 60,
   tz_in = "UTC",
   tz_out = "UTC"
 )
@@ -22,6 +23,8 @@ clean_location_data(
 \item{df}{data frame in standardized format (e.g., from a raw spreadsheet)}
 
 \item{dtype}{data type, iGotU or Columbus P-1}
+
+\item{prep}{reformat columns if all required columns are not present, defaults to True}
 
 \item{filters}{filter bad data points, defaults to true}
 
@@ -42,7 +45,7 @@ clean_location_data(
 \item{tz_out}{output time zone, defaults to UTC}
 }
 \value{
-df of clean animal GPS data
+data frame of clean animal GPS data
 }
 \description{
 Cleans a raw animal GPS dataset, implementing a standardized procedure to remove impossible values

@@ -8,9 +8,9 @@ GPS, Date, and col columns should match}
 line_compare(correct, candidate, col, export = FALSE, out = NULL)
 }
 \arguments{
-\item{correct}{reference df}
+\item{correct}{reference data frame}
 
-\item{candidate}{df to be compared to the reference}
+\item{candidate}{data frame to be compared to the reference}
 
 \item{col}{variable to plot the moving average for}
 

@@ -2,8 +2,7 @@
 % Please edit documentation in R/validation_app.R
 \name{run_validation_app}
 \alias{run_validation_app}
-\title{Run the 'shiny' validation app.
-Depending on the size of input files, it may be advisable to increase the maximum request size.}
+\title{Run the 'shiny' validation app}
 \usage{
 run_validation_app()
 }
@@ -11,6 +10,5 @@ run_validation_app()
 None
 }
 \description{
-Run the 'shiny' validation app.
-Depending on the size of input files, it may be advisable to increase the maximum request size.
+Run the 'shiny' validation app
 }

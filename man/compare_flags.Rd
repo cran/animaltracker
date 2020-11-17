@@ -4,19 +4,30 @@
 \alias{compare_flags}
 \title{Joins and reformats two animal data frames for the purpose of flag comparison}
 \usage{
-compare_flags(correct, candidate, elev = TRUE, slope = TRUE)
+compare_flags(
+  correct,
+  candidate,
+  use_elev = TRUE,
+  use_slope = TRUE,
+  has_flags = FALSE,
+  dropped_flag = NULL
+)
 }
 \arguments{
-\item{correct}{reference df}
+\item{correct}{reference data frame}
 
 \item{candidate}{df to be compared to the reference}
 
-\item{elev}{logical, whether to include elevation, defaults to true}
+\item{use_elev}{logical, whether to include elevation in comparison, defaults to true}
 
-\item{slope}{logical, whether to include slope, defaults to true}
+\item{use_slope}{logical, whether to include slope in comparison, defaults to true}
+
+\item{has_flags}{logical, whether correct data frame has predefined flags, defaults to false}
+
+\item{dropped_flag}{dropped flag column, must be defined when has_flags is true, otherwise null}
 }
 \value{
-joined and reformatted df
+joined and reformatted data frame
 }
 \description{
 Joins and reformats two animal data frames for the purpose of flag comparison

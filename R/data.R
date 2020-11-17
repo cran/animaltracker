@@ -22,21 +22,20 @@
 #'
 "demo_unfiltered"
 
-#' Unfiltered demo animal GPS data from cows with elevation appended at zoom 1
-#'
-#' @format A data frame with 2288 rows and 35 variables
-#'
-"demo_unfiltered_elev"
-
-
-#' Filtered demo animal GPS data from cows 
+#' Filtered demo animal GPS data from cows
 #' 
 #' @format A data frame with 2187 rows and 26 variables
 #'
 "demo_filtered"
 
-#' Filtered demo animal GPS data from cows with elevation appended at zoom 1
+#' Unfiltered demo animal GPS data from cows with elevation
 #'
+#' @format A data frame with 2288 rows and 35 variables
+#'
+"demo_unfiltered_elev"
+
+#' Filtered demo animal GPS data from cows with elevation
+#' 
 #' @format A data frame with 2187 rows and 29 variables
 #'
 "demo_filtered_elev"
